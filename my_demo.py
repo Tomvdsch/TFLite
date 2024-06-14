@@ -163,7 +163,7 @@ def preprocess_feature_extraction(input_details_FE, output_details_FE, image):
     print("Image preprocessing for feature extraction completed.")
     return image
     
-def extract(image, osnet_ain_model):
+def extract(image, osnet_ain_model, ext_delegate, args):
     print("Running feature extraction...")
     input_details_FE, output_details_FE, interpreter_FE = init_feature_extraction(osnet_ain_model, ext_delegate, args)
     image = preprocess_feature_extraction(input_details_FE, output_details_FE, image)
