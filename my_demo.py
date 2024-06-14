@@ -109,10 +109,10 @@ def simple_bbox_decode(points, pred_bboxes, stride):
     return bboxes
 
 
-def visualize(image, bboxes, labels, scores, texts, id):
+def visualize(image, bboxes, labels, scores, texts):
     detections = sv.Detections(xyxy=bboxes, class_id=labels, confidence=scores)
     labels = [
-        f"{texts[class_id][0]} {id} {confidence:0.2f}" for class_id, confidence in
+        f"{texts[class_id][0]} {confidence:0.2f}" for class_id, confidence in
         zip(detections.class_id, detections.confidence)
     ]
 
@@ -205,10 +205,10 @@ def inference_per_sample(interp,
     # inference
     interp.set_tensor(input_details[0]['index'], image)
     
-    startTime = time.time()
+    #startTime = time.time()
     interp.invoke()
-    delta = time.time() - startTime
-    print("Inference time:", '%.1f' % (delta * 1000), "ms\n")
+    #delta = time.time() - startTime
+    #print("Inference time:", '%.1f' % (delta * 1000), "ms\n")
 
     scores = interp.get_tensor(output_details[1]['index'])
     bboxes = interp.get_tensor(output_details[0]['index'])
@@ -452,6 +452,7 @@ def main():
     # Variable for save detected person
     detected_persons = {}
     id = 0
+    counter = 1
 
     while(True):
         images = {}
@@ -464,7 +465,11 @@ def main():
 
         for i in range(total_cam):
             print("Start to inference.")
+            print("Frame counter:")
+            print(counter)
+            counter += 1
             #for img in tqdm.tqdm(images[f"image_{i}"]):
+            startTime = time.time()
             detected_persons, id = inference_per_sample(interpreter,
                                                     osnet_ain_tflite_file,
                                                     images[f"image_{i}"],
@@ -480,6 +485,8 @@ def main():
                                                     ftr_thr=0.4,
                                                     dt_prs=detected_persons,
                                                     id=id)
+            delta = time.time() - startTime
+            print("Inference time:", '%.1f' % (delta * 1000), "ms\n")
             print("Finish inference")
 
 
