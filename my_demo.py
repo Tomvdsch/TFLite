@@ -127,7 +127,7 @@ def get_youtube_stream_url(youtube_url):
     stream = yt.streams.filter(progressive=True, file_extension='mp4').first()
     return stream.url
 
-def init_feature_extraction(osnet_ain_model):
+def init_feature_extraction(osnet_ain_model, ext_delegate, args):
     print("Loading configuration for Feature Extraction...")
 
     #model = r"C:\Users\Tom.van.der.Schaaf\Desktop\Code\YOLO-World\deploy\Files\osnet_ain_x1_0_M_integer_quant.tflite"
@@ -165,7 +165,7 @@ def preprocess_feature_extraction(input_details_FE, output_details_FE, image):
     
 def extract(image, osnet_ain_model):
     print("Running feature extraction...")
-    input_details_FE, output_details_FE, interpreter_FE = init_feature_extraction(osnet_ain_model)
+    input_details_FE, output_details_FE, interpreter_FE = init_feature_extraction(osnet_ain_model, ext_delegate, args)
     image = preprocess_feature_extraction(input_details_FE, output_details_FE, image)
     interpreter_FE.set_tensor(input_details_FE[0]['index'], image)
     interpreter_FE.invoke()
@@ -180,6 +180,8 @@ def inference_per_sample(interp,
                          image_path,
                          image_out,
                          texts,
+                         ext_delegate,
+                         args,
                          priors,
                          strides,
                          output_dir,
@@ -266,7 +268,7 @@ def inference_per_sample(interp,
             x1, y1, x2, y2 = bboxes[0]
 
             cropped_image = ori_image[round(y1):round(y2), round(x1):round(x2)]
-            extracted_features = extract(cropped_image, osnet_ain_model)
+            extracted_features = extract(cropped_image, osnet_ain_model, ext_delegate, args)
             if len(extracted_features) != 0:
                 # Add new person if data is empty
                 if not dt_prs:
@@ -477,6 +479,8 @@ def main():
                                                     images[f"image_{i}"],
                                                     images[f"image_{i}"],
                                                     texts,
+                                                    ext_delegate,
+                                                    args,
                                                     flatten_priors[None],
                                                     flatten_strides,
                                                     output_dir=output_dir,
