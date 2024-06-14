@@ -127,7 +127,8 @@ def get_youtube_stream_url(youtube_url):
     stream = yt.streams.filter(progressive=True, file_extension='mp4').first()
     return stream.url
 
-def init_feature_extraction(osnet_ain_model, ext_delegate, args):
+def init_feature_extraction(interpreter_FE):
+    '''
     print("Loading configuration for Feature Extraction...")
 
     #model = r"C:\Users\Tom.van.der.Schaaf\Desktop\Code\YOLO-World\deploy\Files\osnet_ain_x1_0_M_integer_quant.tflite"
@@ -138,12 +139,15 @@ def init_feature_extraction(osnet_ain_model, ext_delegate, args):
                                       experimental_preserve_all_tensors=True,
                                       experimental_delegates=ext_delegate,
                                       num_threads=args.num_threads)
+    '''
     print("Feature Extraction model setup.")
+    '''
     try: 
         interpreter_FE.allocate_tensors()
     except Exception as e:
         print(f"Failed to allocate tensors: {e}")
         return
+    '''
 
     input_details_FE = interpreter_FE.get_input_details()
     output_details_FE = interpreter_FE.get_output_details()
@@ -153,7 +157,7 @@ def init_feature_extraction(osnet_ain_model, ext_delegate, args):
         
     print("Feature Extraction model loaded successfully.")
 
-    return input_details_FE, output_details_FE, interpreter_FE
+    return input_details_FE, output_details_FE
     
 def preprocess_feature_extraction(input_details_FE, output_details_FE, image):
     print("Preprocessing image for feature extraction...")
@@ -163,9 +167,9 @@ def preprocess_feature_extraction(input_details_FE, output_details_FE, image):
     print("Image preprocessing for feature extraction completed.")
     return image
     
-def extract(image, osnet_ain_model, ext_delegate, args):
+def extract(image, interpreter_FE):
     print("Running feature extraction...")
-    input_details_FE, output_details_FE, interpreter_FE = init_feature_extraction(osnet_ain_model, ext_delegate, args)
+    input_details_FE, output_details_FE = init_feature_extraction(interpreter_FE)
     image = preprocess_feature_extraction(input_details_FE, output_details_FE, image)
     interpreter_FE.set_tensor(input_details_FE[0]['index'], image)
     interpreter_FE.invoke()
@@ -176,12 +180,10 @@ def extract(image, osnet_ain_model, ext_delegate, args):
 
 
 def inference_per_sample(interp,
-                         osnet_ain_model,
+                         interp_FE,
                          image_path,
                          image_out,
                          texts,
-                         ext_delegate,
-                         args,
                          priors,
                          strides,
                          output_dir,
@@ -268,7 +270,7 @@ def inference_per_sample(interp,
             x1, y1, x2, y2 = bboxes[0]
 
             cropped_image = ori_image[round(y1):round(y2), round(x1):round(x2)]
-            extracted_features = extract(cropped_image, osnet_ain_model, ext_delegate, args)
+            extracted_features = extract(cropped_image, interp_FE)
             if len(extracted_features) != 0:
                 # Add new person if data is empty
                 if not dt_prs:
@@ -278,7 +280,8 @@ def inference_per_sample(interp,
                         "camera_id": cam_id,
                         "class_name": labels[0],
                         "bbox": bboxes[0],
-                        "confidence": scores[0],                        "identification_color": np.random.randint(0, 255, size=3),
+                        "confidence": scores[0],                        
+                        "identification_color": np.random.randint(0, 255, size=3),
                         }
                     id += 1
                 else:
@@ -400,7 +403,23 @@ def main():
                                       experimental_preserve_all_tensors=True,
                                       experimental_delegates=ext_delegate,
                                       num_threads=args.num_threads)
-    interpreter.allocate_tensors()
+    try: 
+        interpreter.allocate_tensors()
+    except Exception as e:
+        print(f"Failed to allocate tensors: {e}")
+        return
+
+    interpreter_FE = tflite.Interpreter(model_path=osnet_ain_tflite_file,
+                                          experimental_preserve_all_tensors=True,
+                                          experimental_delegates=ext_delegate,
+                                          num_threads=args.num_threads)
+
+    try: 
+        interpreter_FE.allocate_tensors()
+    except Exception as e:
+        print(f"Failed to allocate tensors: {e}")
+        return
+
     print("Init TFLite Interpter")
     output_dir = "onnx_outputs"
     if not osp.exists(output_dir):
@@ -475,12 +494,10 @@ def main():
             #for img in tqdm.tqdm(images[f"image_{i}"]):
             startTime = time.time()
             detected_persons, id = inference_per_sample(interpreter,
-                                                    osnet_ain_tflite_file,
+                                                    interpreter_FE,
                                                     images[f"image_{i}"],
                                                     images[f"image_{i}"],
                                                     texts,
-                                                    ext_delegate,
-                                                    args,
                                                     flatten_priors[None],
                                                     flatten_strides,
                                                     output_dir=output_dir,
