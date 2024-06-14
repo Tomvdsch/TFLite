@@ -454,6 +454,10 @@ def main():
     ]
     flatten_strides = torch.cat(mlvl_strides)
 
+    # Variable for save detected person
+    detected_persons = {}
+    id = 0
+
     while(True):
         images = {}
         # Get camera frame
