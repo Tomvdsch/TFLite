@@ -135,7 +135,9 @@ def init_feature_extraction(osnet_ain_model):
         
     print("Loading TFLite model for Feature Extraction...")
     interpreter_FE = tflite.Interpreter(model_path=model,
-                                         experimental_preserve_all_tensors=True)
+                                      experimental_preserve_all_tensors=True,
+                                      experimental_delegates=ext_delegate,
+                                      num_threads=args.num_threads)
     print("Feature Extraction model setup.")
     try: 
         interpreter_FE.allocate_tensors()
