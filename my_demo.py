@@ -260,15 +260,10 @@ def inference_per_sample(interp,
     bboxes[:, 1::2] = np.clip(bboxes[:, 1::2], 0, h)
 
     if vis:
-        x1, y1, x2, y2 = bboxes[0]
-
-        cropped_image = ori_image[round(y1):round(y2), round(x1):round(x2)]
-        #print(cropped_image)
-
-        # Add person id to labels
-
         if(num_dets > 0):
-            #print(cropped_image)
+            x1, y1, x2, y2 = bboxes[0]
+
+            cropped_image = ori_image[round(y1):round(y2), round(x1):round(x2)]
             extracted_features = extract(cropped_image, osnet_ain_model)
             if len(extracted_features) != 0:
                 # Add new person if data is empty
