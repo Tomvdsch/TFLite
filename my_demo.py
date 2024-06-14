@@ -109,10 +109,10 @@ def simple_bbox_decode(points, pred_bboxes, stride):
     return bboxes
 
 
-def visualize(image, bboxes, labels, scores, texts):
+def visualize(image, bboxes, labels, scores, texts, id):
     detections = sv.Detections(xyxy=bboxes, class_id=labels, confidence=scores)
     labels = [
-        f"{texts[class_id][0]} {confidence:0.2f}" for class_id, confidence in
+        f"{texts[class_id][0]} {id} {confidence:0.2f}" for class_id, confidence in
         zip(detections.class_id, detections.confidence)
     ]
 
