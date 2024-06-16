@@ -159,6 +159,7 @@ def init_feature_extraction(interpreter_FE):
 
     return input_details_FE, output_details_FE
     
+    
 def preprocess_feature_extraction(input_details_FE, output_details_FE, image):
     print("Preprocessing image for feature extraction...")
     image = cv2.resize(image, (input_details_FE[0]['shape'][2], input_details_FE[0]['shape'][1]))
@@ -167,9 +168,9 @@ def preprocess_feature_extraction(input_details_FE, output_details_FE, image):
     print("Image preprocessing for feature extraction completed.")
     return image
     
-def extract(image, interpreter_FE):
+def extract(image, interpreter_FE, input_details_FE, ouput_details_FE):
     print("Running feature extraction...")
-    input_details_FE, output_details_FE = init_feature_extraction(interpreter_FE)
+    #input_details_FE, output_details_FE = init_feature_extraction(interpreter_FE)
     image = preprocess_feature_extraction(input_details_FE, output_details_FE, image)
     interpreter_FE.set_tensor(input_details_FE[0]['index'], image)
     interpreter_FE.invoke()
@@ -180,7 +181,11 @@ def extract(image, interpreter_FE):
 
 
 def inference_per_sample(interp,
+                         input_details,
+                         output_details,
                          interp_FE,
+                         input_details_FE,
+                         output_details_FE,
                          image_path,
                          image_out,
                          texts,
@@ -196,10 +201,6 @@ def inference_per_sample(interp,
                          ftr_thr=0.4,
                          dt_prs={},
                          id=0,):
-
-    # input / output details from TFLite
-    input_details = interp.get_input_details()
-    output_details = interp.get_output_details()
 
     # load image from path
     ori_image = image_path
@@ -270,7 +271,7 @@ def inference_per_sample(interp,
             x1, y1, x2, y2 = bboxes[0]
 
             cropped_image = ori_image[round(y1):round(y2), round(x1):round(x2)]
-            extracted_features = extract(cropped_image, interp_FE)
+            extracted_features = extract(cropped_image, interp_FE, input_details_FE, output_details_FE)
             if len(extracted_features) != 0:
                 # Add new person if data is empty
                 if not dt_prs:
@@ -403,22 +404,31 @@ def main():
                                       experimental_preserve_all_tensors=True,
                                       experimental_delegates=ext_delegate,
                                       num_threads=args.num_threads)
+    # input / output details from TFLite
+    input_details = interp.get_input_details()
+    output_details = interp.get_output_details()
     try: 
         interpreter.allocate_tensors()
     except Exception as e:
         print(f"Failed to allocate tensors: {e}")
         return
 
+    
+
     interpreter_FE = tflite.Interpreter(model_path=osnet_ain_tflite_file,
                                           experimental_preserve_all_tensors=True,
                                           experimental_delegates=ext_delegate,
                                           num_threads=args.num_threads)
+    input_details_FE = interpreter_FE.get_input_details()
+    output_details_FE = interpreter_FE.get_output_details()
 
     try: 
         interpreter_FE.allocate_tensors()
     except Exception as e:
         print(f"Failed to allocate tensors: {e}")
         return
+
+    
 
     print("Init TFLite Interpter")
     output_dir = "onnx_outputs"
@@ -490,11 +500,14 @@ def main():
             print("Start to inference.")
             print("Frame counter:")
             print(counter)
-            counter += 1
             #for img in tqdm.tqdm(images[f"image_{i}"]):
             startTime = time.time()
             detected_persons, id = inference_per_sample(interpreter,
+                                                    input_details,
+                                                    output_details,
                                                     interpreter_FE,
+                                                    input_details_FE,
+                                                    output_details_FE,
                                                     images[f"image_{i}"],
                                                     images[f"image_{i}"],
                                                     texts,
@@ -511,6 +524,7 @@ def main():
             delta = time.time() - startTime
             print("Inference time:", '%.1f' % (delta * 1000), "ms\n")
             print("Finish inference")
+            counter += 1
 
 
 if __name__ == "__main__":
